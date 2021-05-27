@@ -3,14 +3,16 @@ import {
     DatetimePicker,
     Popup,
     Divider,
-    Overlay
+    Overlay,
+    Toast
 } from 'vant';
 const vant = {
     install:function(Vue){
         Vue.use(DatetimePicker)
         Vue.use(Popup)
         Vue.use(Divider)
-        Vue.use(Overlay);
+        Vue.use(Overlay)
+        Vue.use(Toast)
     }
 }
 export default vant

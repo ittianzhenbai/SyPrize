@@ -1,7 +1,7 @@
 <template>
     <div class="contain">
         <div class="activity">
-            <div class="title font">业务员：{{mobile}}</div>
+            <div class="title font">{{prizedetail.shop_name}}</div>
             <ul class="activity-info">
                 <li>
                     <span class="text1">手机</span>号：
@@ -9,7 +9,10 @@
                 </li>
                 <li>
                     <span class="text">地</span>址：
-                    <span class="text2">{{prizedetail.address}} </span>
+                    <span class="text2 address">{{prizedetail.address}} </span>
+                </li>
+                <li>
+                    活动产品：{{prizedetail.goods_name}}
                 </li>
                 <li>
                     开始时间：{{prizedetail.start_date}}
@@ -19,7 +22,7 @@
                 </li>
                 <li>
                     <span class="text1">执行</span>人：
-                    <span class="text2 num">洪永曦</span>
+                    <span class="text2 num">{{prizedetail.realname}}</span>
                 </li>
             </ul>
              <div class="prasie-setting">
@@ -29,25 +32,21 @@
                         <span class="text-title">奖品</span>
                         <span class="text-title col-3">数量</span>
                     </li>
-                    <li class="font" v-for="(item,index) in 2" :key="index">
-                        <span class="text2">特别优胜奖</span>
-                        <span class="text2">热水壶</span>
-                        <span class="text3 col-3">5</span>
+                    <li class="font" v-for="item in prizelist" :key="item.id">
+                        <span class="text2">{{item.name}}</span>
+                        <span class="text2">{{item.money}}</span>
+                        <span class="text3 col-3">{{item.number}}</span>
  
-                    </li>
-                    <li class="font">
-                        <span class="text2">张志</span>
-                        <span class="text2">热水壶</span>
-                        <span class="text3 col-3">5</span>
                     </li>
                 </ul>
             </div>
         </div>
        
-        <ul class="btns" v-if="userIdentity == 'salesman'">
-            <li>
+        <ul class="btns" v-if="userIdentity == 'salesman'&& isexecutor == false">
+            <li 
+                >
                <el-button 
-                    class="botton font" 
+                    class="botton font"
                     size="mini" 
                     @click="startOption()">
                     开始
@@ -72,7 +71,7 @@
         </ul>
         <div 
             class="start-btn font" 
-            v-if="userIdentity == '2'"
+            v-if="isexecutor == true"
             @click="startOption()"
         >
             开始
@@ -81,13 +80,14 @@
             :isshow = isshow
             :msg = alertmsg
             @changeshow = changeshow
+            @msgstatus = getMsgstatus
             :isquxiao = isquxiao
             ></msgAlert>
     </div>
 </template>
 <script>
 import msgAlert from "@/components/msgAlert/msgAlert.vue"
-import { mapState,mapMutations } from "vuex"
+import { mapState} from "vuex"
 export default {
     data(){
         return{
@@ -95,35 +95,23 @@ export default {
             isquxiao:false,
             alertmsg:'',
             prizedetail:{},//抽奖详情
-             tableData: [{
-                date: '一等奖',
-                name: '食用油',
-                address: '5人'
-                }, {
-                date: '二等奖',
-                name: '卫生纸',
-                address: '15人'
-                }, {
-                date: '三等奖',
-                name: '50元优惠券',
-                address: '20人'
-                }, {
-                date: '纪念奖',
-                name: '20元优惠券',
-                address: '30人'
-                }],
+            prizelist:[],//抽奖列表
+            prizeid:"",//抽奖的id
+            isexecutor:"",//当前用户的身份是否是执行人
+            curstatus:"",//当前奖项的状态 避免用户回退后执行删除和编辑无感知
         }
     },
     computed:{
-        ...mapState(["userIdentity","token","mobile","prizeId"])
+        ...mapState(["userIdentity","token","mobile","prizeId","curname","userId"])
     },
-    mounted(){
+    created(){
         this.getPrizeDetail()
     },
     components:{
         msgAlert
     },
     methods:{
+        //获取抽奖详情
         getPrizeDetail(){
             this.request.post(
                 "lottery/prize/prize_detail",
@@ -132,59 +120,132 @@ export default {
                     prize_id:this.prizeId
                 }
             ).then(res=>{
-                console.log(res)
                 if(res.code == 1){
                     this.prizedetail = res.data
+                    this.prizelist = res.data.prize
+                    this.prizeid = res.data.prize_id
+                    this.curstatus = res.data.status
+                    if(this.userId != res.data.user_id ){
+                        //如果当前用户的userId  不等于创建者的用户user_id,表示他是执行者
+                        this.isexecutor = true
+                    }else{
+                        this.isexecutor = false
+                    }
                 }
             })
         },
         delPrize(){
+            //删除抽奖
             this.request.post(
                 "lottery/prize/delete_prize",
                 {
                     token:this.token,
-                    prize_id:this.prizeId
+                    prize_id:this.prizeid
                 }
             ).then(res=>{
-                console.log("删除抽奖的信息为：",res)
                 if(res.code == 1){
-                    this.$router
+                    this.$router.push({
+                        path:"/activityList"
+                    })
                 }
             })
         },
+        updatePrize(status){
+            //更新抽奖状态 数字1代表开始 2代表结束
+            this.request.post(
+                "/lottery/prize/update_prize_status",
+                {
+                    token:this.token,
+                    prize_id:this.prizeid,
+                    status:status
+                }
+            ).then(res=>{
+                //抽奖状态更新以后的操作为
+                if(res.code == 1){
+                    this.$router.push({
+                        path:"/erweima",
+                        query:{
+                            prizeid:this.prizeid
+                        }
+                    })
+                } 
+            })
+        },
+        //点击开始抽奖按钮 控制弹窗状态 修改提示信息
         startOption(){
-            console.log("开始")
             this.isshow = true
             this.isquxiao = true
             this.alertmsg = "是否开启本次抽奖？"
         },
+        //点击修改按钮 执行修改操作
         updateOption(){
-            console.log("修改")
+            //这里添加判断 防止抽奖结束或者开始后用户回退以后操作无感知
+            switch(this.curstatus - 0){
+                case 0:
+                    //未开始状态，跳转到修改页面
+                    this.$router.push({
+                        path:"/prizeSetting",
+                        query:{
+                            form:"update"
+                        }
+                    })
+                    break;
+                case 1:
+                    //已开始状态，增加一个toast提示
+                    this.$toast.fail({
+                        message: "抽奖已开始无法编辑",
+                    });
+                    break;
+                case 2:
+                    this.$toast.fail({
+                        message: "抽奖已结束无法编辑",
+                    });
+                    break;
+                default:
+                    break;
+            }
+            
         },
+         //点击删除按钮 控制弹窗状态 修改弹窗信息
         delOption(){
-            this.isshow = true
-            this.isquxiao = true
-            this.alertmsg = "是否删除本次抽奖？"
-        },
-        changeshow(val){
-            //控制弹窗是否显示
-            this.isshow = val
-            // console.log("666",val)
-            if(this.alertmsg == "是否删除本次抽奖？"){
-                console.log("这里执行了删除操作")
-                this.delPrize()
+            switch(this.curstatus - 0){
+                case 0:
+                    this.isshow = true
+                    this.isquxiao = true
+                    this.alertmsg = "是否删除本次抽奖？"
+                    break;
+                 case 1:
+                    //已开始状态，增加一个toast提示
+                    this.$toast.fail({
+                        message: "抽奖已开始无法删除",
+                    });
+                    break;
+                case 2:
+                    this.$toast.fail({
+                        message: "抽奖已结束无法删除",
+                    });
+                    break;
+                default:
+                    break;
+
             }
         },
-        rowStyle({ row, rowIndex}) {
-            return {
-                color:'#333333',
-                lineHeight:'1.2rem',
-                height:'1rem',
-                fontSize:"0.85rem",
-                cursor:'pointer',
-                fontFamily:"MicrosoftYaHei",
-                fontWeight:"Regular",
-                borderBottom:"none"
+        //控制弹窗是否显示
+        changeshow(val){   
+            this.isshow = val
+        },
+        getMsgstatus(val){
+            console.log("父组件获取到的信息",val)
+            switch(this.alertmsg){
+                case "是否开启本次抽奖？":
+                    if(val == "determine"){
+                        this.updatePrize(1)
+                    }
+                    break;
+                case "是否删除本次抽奖？":
+                    if( val == "determine"){
+                        this.delPrize()
+                    }
             }
         }
     },
@@ -209,22 +270,44 @@ export default {
             display inline-block
             width 100%
             text-align left
-            fong-size 0.8rem
+            font-size 0.8rem
             line-height 1.87rem
             .text
-                letter-spacing 1.6rem
+                // letter-spacing 1.6rem
             .text1
-                letter-spacing 0.4rem
+                // letter-spacing 0.4rem
             .text2
                 display inline-block
-                width calc(100% - 5.5rem)
+                width calc(100% - 3.5rem)
                 vertical-align top
                 line-height 1.3rem
                 padding-top 8px
+            .address
+                width calc(100% - 2.9rem)
             .num
                 padding-top 6px
         .prasie-setting
             font-size 0.8rem !important
+            ul
+                width 100%
+                &>li
+                    min-height 2.3rem
+                    // line-height 2.64rem
+                    color #333333
+                    font-size 0.8rem
+                    display flex
+                    text-align center
+                    align-items center
+                    span
+                        flex 1
+                        padding 5px
+                    .col-3,.col-4
+                        flex 0.6
+                .header
+                    font-size 0.75rem
+                    font-family Microsoft YaHei
+                    font-weight 400
+                    font-weight bold
     .btns
         margin 1.33rem auto
         &>li
@@ -241,6 +324,10 @@ export default {
                 color #FF5F00
                 background #F4F4F4
                 font-size 0.91rem
+        .executor
+            margin-left 1.05rem
+            margin-right 1.08rem
+            width calc(100% - 2.13rem)
     .start-btn
         margin 1.33rem 1.15rem 1rem 1.23rem
         height 2.13rem

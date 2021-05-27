@@ -9,7 +9,7 @@
                         <div class="col-2">奖品</div>
                         <div class="col-3">数量</div>
                         <div class="col-4">
-                            <div class="add-btn"  @click="addOption()">添加奖项</div>
+                            <div :class="[islimit == false?'add-btn':'add-btn limit-btn']" @click="addOption()">添加奖项</div>
                         </div>
                     </li>
                     <li 
@@ -19,7 +19,7 @@
                     >
                         <div class="col-1">{{item.name}}</div>
                         <div class="col-2">{{item.money}}</div>
-                        <div class="col-3">{{item.num}}</div>
+                        <div class="col-3">{{item.number}}</div>
                         <div class="col-4 con-col-4">
                             <span @click="handleEdit(item,index)">修改</span>
                             <span @click="handleDelete(item,index)">删除</span>
@@ -37,14 +37,14 @@
        <van-overlay  z-index="999" :show="isshow" @click="isshow = false">
             <div class="wrapper" @click.stop>
                 <div class="content" v-show ="addAlert == true">
-                    <input type="text" v-model="name" placeholder="请输入奖项名称"/>
-                    <input type="text" v-model="money" placeholder="请输入奖项金额"/>
-                    <input type="text" v-model="num" placeholder="请输入奖项人数"/>
+                    <input type="text" v-model="name" maxlength="4" placeholder="请输入奖项名称"/>
+                    <input type="text" v-model="money" maxlength="6" placeholder="请输入奖品"/>
+                    <input type="number" v-model="number" placeholder="请输入奖项人数"/>
                 </div>
                 <div class="content" v-show ="modAlert == true">
-                    <input type="text" v-model="modname" placeholder="请修改奖项名称"/>
-                    <input type="text" v-model="modmoney" placeholder="请修改奖项金额"/>
-                    <input type="text" v-model="modnum" placeholder="请修改奖项人数"/>
+                    <input type="text" v-model="modname" maxlength="4" placeholder="请修改奖项名称"/>
+                    <input type="text" v-model="modmoney" maxlength="6" placeholder="请修改奖品"/>
+                    <input type="number" v-model="modnum" placeholder="请修改奖项人数"/>
                 </div>
                 <div class="dialog-footer" v-show ="addAlert == true">
                     <span :class='[addactive == false?"font save-btn":"font active-btn"]' @click="sure()">保存</span>
@@ -59,11 +59,17 @@
 <script>
 import { mapState,mapMutations } from "vuex"
 export default {
+    props:{
+        editstatus:{
+            type:String,
+            default:""
+        }
+    },
     data(){
         return{
             name: '',//奖项名称
             money:'',//奖项金额
-            num:'',//奖项人数
+            number:'',//奖项人数
             modname: '',//要修改的奖项名称
             modmoney:'',//要修改的奖项金额
             modnum:'',//要修改的奖项人数
@@ -78,31 +84,54 @@ export default {
         }
     },
     computed:{
-        ...mapState(["token"]),
+        ...mapState(["token","prizeId"]),
+        //增加奖项弹窗的按钮是否是激活状态
         addactive(){
-            if(this.addAlert == true&&this.name !=""&&this.money !=""&&this.num !=""){
+            if(this.addAlert == true&&this.name !=""&&this.money !=""&&this.number !=""){
                 return true
             }else{
                 return false
             }
         },
+        //修改奖项弹窗的按钮是否是激活状态
         modactive(){
             if(this.modAlert == true&&this.modname !=""&&this.modmoney !=""&&this.modnum !=""){
                 return true
             }else{
                 return false
             }
+        },
+        //是否限制增加奖项
+        islimit(){
+            if(this.prizelist.length<6){
+                //限制最多可以设置5个奖项，最少设置3个奖项
+                return false
+            }else{
+                return true
+            }
         }
     },
     mounted(){
-        if(this.alertStatus == "addPer"){
-            this.title = "增加执行人"
-        }
     },
     methods:{
         ...mapMutations(["setPrizeList"]),
+        //如果处于编辑状态，首先要获取详情
+        getPrizeDetail(){
+            this.request.post(
+                "lottery/prize/prize_detail",
+                {
+                    token:this.token,
+                    prize_id:this.prizeId
+                }
+            ).then(res=>{
+                if(res.code == 1){
+                    this.prizelist = res.data.prize
+                    this.$emit("getPrizeList",this.prizelist)
+                }
+            })
+        },
+        //执行奖项修改操作
         handleEdit(item,index) {
-            console.log("我是修改按钮",item)
             //修改之前要关闭修改窗口
             this.modAlert = true
             this.isshow = true
@@ -110,39 +139,48 @@ export default {
             //进行修改初始化
             this.modname = item.name
             this.modmoney = item.money
-            this.modnum = item.num
+            this.modnum = item.number
             //替换原数组中的元素
            this.curindex = index
         },
+        //执行删除奖项操作
         handleDelete(item,index) {
-            // console.log("我是删除按钮",index,row)
             this.prizelist.splice(index,1)
             this.$emit("getPrizeList",this.prizelist)
         },
+        //增加奖项设置
         addOption(){
-            // console.log("增加一个奖项设置")
-            //增加之前 关闭修改窗口 
-            this.addAlert = true
-            this.modAlert = false
-            this.isshow = true
-            //每次进入初始化
-            this.name = ""
-            this.money = ""
-            this.num = ""
+            //当奖项增加到5个的时候开始限制不能进行增加
+            if(this.islimit == false){
+                //增加之前 关闭修改窗口
+                this.addAlert = true
+                this.modAlert = false
+                this.isshow = true
+                //每次进入初始化
+                this.name = ""
+                this.money = ""
+                this.number = ""
+            }
         },
         sure(){
+            //确定修改或者增加以后的操作
             if(this.addactive == true){
                 this.isshow = false
-                this.prizelist.push({name:this.name,money:this.money,num:this.num})
+                this.prizelist.push({name:this.name,money:this.money,number:this.number})
             }else if(this.modactive == true){
                 this.isshow = false
-                this.prizelist.splice(this.curindex,1,{name:this.modname,money:this.modmoney,num:this.modnum})
+                this.prizelist.splice(this.curindex,1,{name:this.modname,money:this.modmoney,number:this.modnum})
             }
+            //通知父组件进行状态更新
             this.$emit("getPrizeList",this.prizelist)
         },
     },
     watch:{
-        
+        editstatus(newVal){
+            if(newVal == "update"){
+                this.getPrizeDetail()
+            }
+        }
     }
 }
 </script>
@@ -211,6 +249,10 @@ export default {
                             border 1px solid #FF5F00
                             color #FF5F00
                             border-radius 0.2rem
+                        .limit-btn
+                            color #FFFFFF
+                            border 1px solid #A9A9A9
+                            background #A9A9A9
                     .con-col-4
                         flex 1.6
                         display flex 

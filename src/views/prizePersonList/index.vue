@@ -8,18 +8,21 @@
                     <span>人数</span>
                     <span>中奖人数</span>
                 </li>
-                <li class="font row">
-                    <span class="text1">100</span>
-                    <span class="text1">8</span>
-                    <span class="text1">6</span>
+                <li class="font row"
+                    v-for="(item,index) in prize_setting"
+                    :key="index"
+                >
+                    <span class="text1">{{item.money}}</span>
+                    <span class="text1">{{item.number}}</span>
+                    <span class="text1">{{item.prize_number}}</span>
                 </li>
             </ul>
         </div>
-         <div class="row-box">
-            <ul 
-                v-infinite-scroll="load" 
+         <div class="row-box winlist">
+              <!-- v-infinite-scroll="getPirzeResult" 
                 style="overflow:auto"
-                :infinite-scroll-distance="50"
+                :infinite-scroll-distance="50" -->
+            <ul 
             >
                 <li class="font">中奖名单</li>
                 <li 
@@ -31,43 +34,63 @@
                     <span class="text1 buynumber">购买数量</span>
                 </li>
                 <li class="font row infinite-list-item" 
-                    v-for="(index,item) in count" 
-                    :key="index"
+                    v-for="item in prizeresult" 
+                    :key="item.mid"
                 >
-                    <span class="text1 username">某某</span>
-                    <span class="text1">15038869802</span>
-                    <span class="text1">电动热水壶</span>
-                    <span class="text1 text2 buynumber">{{count}}</span>
+                    <span class="text1 username">{{item.username}}</span>
+                    <span class="text1">{{item.phone}}</span>
+                    <span class="text1">{{item.name}}{{item.money}}</span>
+                    <span class="text1 text2 buynumber">{{item.num}}</span>
                 </li>
-                <li @click="xxx()">
+                <li class="font row nodata" 
+                    v-show="prizeresult.length == 0" 
+                >
+                    <span class="text text-nodata">暂无数据</span>
+                </li>
+                <!-- <li @click="loadMore()">
                     <span>查看更多</span>
-                </li>
+                </li> -->
             </ul>
         </div>
     </div>
 </template>
 <script>
+import { mapState } from "vuex"
 export default {
     data(){
         return{
             count:0,
-            test:13514785254
+            prizeresult:[],//中奖结果
+            prize_setting:[]//奖项设置
         }
     },
-    mounted(){
-
-    },
+    computed:{
+		...mapState(["token","prizeId"]),
+	},
     components:{
 
     },
+    mounted(){
+        this.getPirzeResult()
+    },
     methods:{
-        load () {
-            // this.count += 2
-            // this.test +=1
-            
-            // this.count +=1
+        getPirzeResult(){
+            let that = this
+            this.request.post(
+                "lottery/prize/get_lottery_members",
+                {
+                    token:that.token,
+                    prize_id:that.prizeId
+                }
+            ).then(res=>{
+                console.log(res)
+                if(res.code == 1){
+                    this.prizeresult = res.data.list
+                    this.prize_setting = res.data.prize
+                }
+            })
         },
-        xxx(){
+        loadMore(){
             this.count +=10
         }
     },
@@ -115,5 +138,8 @@ export default {
                     flex 0.6
                 .text1
                     font-size 0.75rem
-                
+            .nodata
+                text-align center
+                .text-nodata
+                    padding 0
 </style>

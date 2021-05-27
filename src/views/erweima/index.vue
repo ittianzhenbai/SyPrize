@@ -3,65 +3,117 @@
 		<span class="logo"></span>
 		<div 
 			class="watch-btn font" 
-			v-if="userIdentity =='salesman'"
-			@click="watchPraiseList()"
+			@click="watchPrizeList()"
 		>查看中奖情况</div>
         <div class="sao-ma"
-			@click="goPraise()"
-		></div>
+		@click="goPrize()"
+		>
+			<img :src="qrcode" alt="">
+		</div>
 		<div 
 			class="over-btn font"
-			@click="overPrasie()"
-			v-if="userIdentity =='salesman'"
+			@click="overPrize()"
 		>结束抽奖</div>
 		<msgAlert 
             :isshow = isshow
             :msg = alertmsg
 			:isquxiao = isquxiao
             @changeshow = changeshow
+			@msgstatus = getMsgStatus
         ></msgAlert>
 	</div>
 </template>
 
 <script>
 	import msgAlert from "@/components/msgAlert/msgAlert.vue"
-	import { mapState,mapMutations } from "vuex"
+	import { mapState } from "vuex"
 	export default {
 		data() {
 			return {
 				status:2,
 				alertmsg:"是否结束本次抽奖？",
 				isshow:false,
-				isquxiao:true
+				isquxiao:true,
+				qrcode:"",//抽奖二维码
+				isexecutor:"",//当前用户的身份是否是执行人,true代表是执行人，否则是业务员
 			};
 		},
 		mounted(){
-			console.log(this.userIdentity)
+			// console.log(this.userIdentity)
+			this.getPrizeDetail()
 		},
 		computed:{
-			...mapState(["userIdentity"])
+			...mapState(["userIdentity","prizeId","token","userId"])
 		},
 		components:{
 			msgAlert
 		},
 		methods:{
-			watchPraiseList(){
+			watchPrizeList(){
 				this.$router.push({
-					path:"/praisePersonList"
+					path:"/prizePersonList"
 				})
 			},
-			goPraise(){
+			goPrize(){
 				this.$router.push({
-					path:"/attendPersonLogin"
+					path:"/attendPersonLogin",
+					query:{
+						prize_id:this.prizeId
+					}
 				})
 			},
-			overPrasie(){
+			overPrize(){
 				this.isshow = true
 			},
 			changeshow(val){
+				//更新弹窗状态
 				this.isshow = val
-				console.log("666",val)
 			},
+			updatePrize(status){
+				//更新抽奖状态 数字1代表开始 2代表结束
+				this.request.post(
+					"/lottery/prize/update_prize_status",
+					{
+						token:this.token,
+						prize_id:this.prizeId,
+						status:status
+					}
+				).then(res=>{
+					console.log("抽奖状态更新以后的操作为：",res)
+					if(res.code == 1){
+						this.$router.push({
+							path:"/activityList"
+						})
+					}
+				})
+			},
+			getPrizeDetail(){
+				//获取抽奖详情
+				this.request.post(
+					"lottery/prize/prize_detail",
+					{
+						token:this.token,
+						prize_id:this.prizeId
+					}
+				).then(res=>{
+					if(res.code == 1){
+						this.qrcode = res.data.qrcode
+						//理论上只要可以获取到该活动列表都可以停止
+						// if(this.userId != res.data.user_id){
+						// 	this.isexecutor = true
+						// }else{
+						// 	this.isexecutor = false
+						// }
+					}
+				})
+			},
+			getMsgStatus(val){
+				//点击了确定按钮
+				if(val == "determine"){
+					//更新抽奖状态为结束抽奖
+					this.updatePrize(2)
+				}
+			}
 		}
 	}
 </script>
@@ -104,6 +156,9 @@
 		left 50%
 		transform translate(-50%,-50%)
 		border-radius 0.21rem
+		img 
+			width 100%
+			height 100%
 	.over-btn
 		position absolute
 		bottom 1.79rem

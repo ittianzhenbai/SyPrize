@@ -11,9 +11,7 @@ module.exports = {
         "/api": {
           ws: true,
           target:
-            process.env.NODE_ENV === "development"
-              ? "http://syjn.nzsoso.com/"
-              : "http://syjn.nzsoso.com/",
+            process.env.VUE_APP_URL,
           changeOrigin: true,
           secure: false,
           pathRewrite: {

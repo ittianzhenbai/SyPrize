@@ -10,14 +10,14 @@ const routes = [
     component: () => import(/* webpackChunkName: "login" */ '../views/login')
   },
   {
-    path: '/praiseSetting',
-    name: 'praiseSetting',
-    component: () => import(/* webpackChunkName: "praiseSetting" */ '../views/praiseSetting')
+    path: '/prizeSetting',
+    name: 'prizeSetting',
+    component: () => import(/* webpackChunkName: "praiseSetting" */ '../views/prizeSetting')
   },
   {
-    path: '/praiseBystore',
-    name: 'praiseBystore',
-    component: () => import(/* webpackChunkName: "praiseBystore" */ '../views/praiseBystore')
+    path: '/prizeBystore',
+    name: 'prizeBystore',
+    component: () => import(/* webpackChunkName: "praiseBystore" */ '../views/prizeBystore')
   },
   {
     path: '/activityList',
@@ -41,9 +41,9 @@ const routes = [
     component: () => import(/* webpackChunkName: "attendPersonLogin" */ '../views/attendPersonLogin')
   },
   {
-    path: '/praiseOver',
-    name: 'praiseOver',
-    component: () => import(/* webpackChunkName: "praiseOver" */ '../views/praiseOver')
+    path: '/prizeOver',
+    name: 'prizeOver',
+    component: () => import(/* webpackChunkName: "praiseOver" */ '../views/prizeOver')
   },
   {
     path: '/erweima',
@@ -51,9 +51,9 @@ const routes = [
     component: () => import(/* webpackChunkName: "erweima" */ '../views/erweima')
   },
   {
-    path: '/praisePersonList',
-    name: 'praisePersonList',
-    component: () => import(/* webpackChunkName: "praisePersonList" */ '../views/praisePersonList')
+    path: '/prizePersonList',
+    name: 'prizePersonList',
+    component: () => import(/* webpackChunkName: "prizePersonList" */ '../views/prizePersonList')
   }
 ]
 

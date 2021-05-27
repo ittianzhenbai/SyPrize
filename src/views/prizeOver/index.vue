@@ -16,9 +16,6 @@
 			};
 		},
 		mounted(){
-			// if(this.status == 2){
-			// 	this.info = "您已参与过此次抽奖！"
-			// }
 		},
 		computed:{
 			

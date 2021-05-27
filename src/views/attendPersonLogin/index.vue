@@ -6,12 +6,17 @@
             <span class="text font" @click="xxx()">石原金牛幸运大抽奖</span>
             <div class="login-box">
                 <span class="font text1">姓名</span>
-                <el-input class="input name" v-model="username" placeholder="请输入姓名" clearable/>
+                <el-input class="input name" v-model="username" placeholder="请输入姓名"  clearable/>
                 <span class="font text1">手机号</span>
-                <el-input class="input name" v-model="mobile" placeholder="请输入手机号" clearable/>
+                <el-input 
+                    class="input phone" 
+                    v-model="mobile" 
+                    placeholder="请输入手机号"  
+                    oninput="if(value.length > 11) value=value.slice(0, 11)" 
+                    type="number" clearable/>
                 <span class="font text1">数量</span>
                 <el-input 
-                    class="input password" 
+                    class="input password" r
                     placeholder="请输入购买数量" 
                     v-model="number" 
                     oninput="value=value.replace(/[^\d]/g,'')"
@@ -39,40 +44,30 @@ export default {
             username:"",//姓名
             mobile:"",//手机号
             number:"",//数量
-            msgcode:"",
+            msgcode:"",//验证码
             isshow:false,
-            alertmsg:'用户名/密码错误',
-            timer:"获取验证码",
-            interval:null,
-            
+            alertmsg:'',//弹窗提示信息
+            timer:null,
+            interval:null,//延时定时器的id
         }
     },
     components:{
         msgAlert
     },
     mounted(){
-        console.log("重新加载")
-        var starttime = (new Date()).getTime();
-        if(this.timerCount - starttime >0){
-             let _this = this
-            setInterval(()=>{
-                var curtimer = (new Date()).getTime();
-                _this.timer =   Math.floor((_this.timerCount - curtimer)/1000 - 1)
-                console.log("666")
-            },1000)
-        }
+        this.setprizeId(this.$route.query.prize_id)
     },
     computed:{
-        ...mapState(["timerCount","prizeId","Token1"]),
+        ...mapState(["timerCount","token1"]),
         active(){
-            if(this.mobile.length == 11 && this.money && this.msgcode.length == 4){
+            if(this.username&&this.mobile.length == 11 && this.number && this.msgcode.length == 4){
                 return true
             }else{
                 return false
             }
         },
         timecount(){
-            if(this.timer == "获取验证码"){
+            if(this.timer == null){
                 return "获取验证码"
             }else{
                 return this.timer + "s"
@@ -80,25 +75,39 @@ export default {
         }
     },
     methods:{
-        ...mapMutations(["settimerCount","setToken1","setAmount","setCount"]),
+        ...mapMutations(["settimerCount","setToken1","setCount","setprizeId"]),
+        //获取短信验证码
+        getMsg(){
+            this.request.post(
+                "member/login/sendsms",
+                {
+                    mobile:this.mobile,
+                }
+            ).then(res=>{
+                
+            })
+        },
+        //参加抽奖按钮
         attendPrize(){
             this.request.post(
                 "lottery/login/join_lottery",
                 {
-                    prize_id:this.prizeId,
+                    prize_id:this.$route.query.prize_id,
                     mobile:this.mobile,
+                    username:this.username,
                     code:this.msgcode,
-                    money:this.money
+                    buyer_num:this.number
                 }
             ).then(res=>{
-                console.log("参与抽奖的信息为：",res)
                 this.setToken1(res.data.token)
                 this.setCount(res.data.re_num)
-                this.setAmount(res.data.amount)
                 if(res.code == 1){
                     this.$router.push({
-                        path:"/praiseBystore"
+                        path:"/prizeBystore"
                     })
+                }else{
+                    this.alertmsg = res.msg
+                    this.isshow = true
                 }
                
             })
@@ -108,36 +117,23 @@ export default {
         },
         changeshow(val){
             this.isshow = val
-            console.log("666",val)
         },
         refeshtimer(){
-            var starttime = (new Date()).getTime();
-            var endtimer = starttime+8000
-            this.settimerCount(endtimer)
+            if(this.timecount == "获取验证码"){
             let _this = this
+            this.timer = 60
             this.interval = setInterval(()=>{
-                var curtimer = (new Date()).getTime();
-                _this.timer =   Math.floor((_this.timerCount - curtimer)/1000 - 1)
-                // console.log("666")
-            },1000)
-        },
-        xxx(){
-            clearInterval(this.interval)
-        }
-    },
-    watch:{
-        timer(newVal,oldVal){
-            console.log(newVal)
-            if(newVal == 0){
-                console.log("666")
-                clearInterval(this.interval)
-                this.timer = "获取验证码"
-                this.active = true
-                
+                if(_this.timer > 0){
+                    _this.timer = _this.timer - 1
+                }else{
+                    clearInterval(_this.interval)
+                    _this.timer = null
+                }
+                },1000)
             }
-        }
-    }
-    
+            
+        },
+    }, 
 }
 </script>
 <style lang="stylus" scoped>

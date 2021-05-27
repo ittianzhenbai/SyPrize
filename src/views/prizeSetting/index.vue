@@ -7,22 +7,30 @@
                     <el-input placeholder="请输入店铺名或者商家姓名" v-model="ruleForm.shopname"></el-input>
                 </el-form-item>
                 <el-form-item label="手机号" prop="phonenumber">
-                    <el-input placeholder="请输入商家的手机号" v-model="ruleForm.phonenumber"></el-input>
+                    <el-input placeholder="请输入商家的手机号" type="number" v-model="ruleForm.phonenumber"></el-input>
                 </el-form-item>
                 <el-form-item label="地址" prop="address">
                     <el-input placeholder="请输入商家的地址" v-model="ruleForm.address"></el-input>
                 </el-form-item>
-                <el-form-item label="金额" prop="money">
-                    <el-input placeholder="请输入满足抽奖的金额" v-model="ruleForm.money"></el-input>
+                 <el-form-item label="商品" prop="tradename">
+                    <el-input placeholder="请输入促销商品" v-model="ruleForm.tradename"></el-input>
+                </el-form-item>
+                <el-form-item label="数量" prop="buynumber">
+                    <el-input placeholder="请输入满足抽奖的购买数量" v-model="ruleForm.buynumber"></el-input>
                 </el-form-item>
                  <el-form-item label="执行人">
                     <el-select 
-                        :multiple="true"
-                        v-model="ruleForm.addperson" placeholder="请选择执行人">
+                        v-model="ruleForm.addperson" 
+                        :value-key="String(enforcer_id)"
+                        placeholder="请选择执行人"
+                        @change="getSelvalue"
+                        clearable
+                        >
                         <el-option
-                            v-for="(item,index) in sel_options"
-                            :key="index" 
-                            :value="item.realname">{{item.realname}}</el-option>
+                            v-for="item in sel_options"
+                            :key="item.enforcer_id"
+                            :label="item.realname"
+                            :value="item"></el-option>
                     </el-select>
                      <el-button
                         class="addperson"
@@ -78,33 +86,41 @@
                 </el-form-item>
             </el-form>
         </div>
-        <div class="title font">奖项设置</div>
+        <div class="title font">
+            奖项设置
+            <span v-show="prizeisnull == false && prizelist_isfull == false" class="err-msg">奖项设置必须大于1个，小于等于6个</span>    
+         </div>
         <addAlert
-            @getPrizeList = "getPrizeList"
+            :editstatus="editstatus"
+            @getPrizeList="getPrizeList"
         ></addAlert>
         <van-overlay  z-index="999" :show="isshow" @click="isshow = false">
             <div class="wrapper" @click.stop>
                 <div class="content">
-                    <input type="text" v-model="executor" placeholder="请输入执行人姓名"/>
-                    <input type="text" v-model="phonenumber" placeholder="请输入执行人手机号"/>
+                    <input type="text" v-model="executor"  placeholder="请输入执行人姓名"/>
+                    <input 
+                        type="number" 
+                        maxlength="11"
+                        oninput="if(value.length > 11) value=value.slice(0, 11)" 
+                        v-model="phonenumber" placeholder="请输入执行人手机号"/>
                 </div>
                  <div class="dialog-footer">
                     <span :class='[addactive == false?"font save-btn":"font active-btn"]' @click="sure()">保存</span>
                 </div>
             </div>
         </van-overlay>
-        <el-button class="start-botton font" @click="startActivity()">开始抽奖</el-button>
+        <el-button class="start-botton font" @click="reservePrize()">保存</el-button>
     </div>
 </template>
 <script>
-import addAlert from "../../components/addAlert/addAlert.vue"
+import addAlert from "../../components/addAlert/addAlert.vue" //增加奖项的列表和增加的弹窗
 import { mapState,mapMutations } from "vuex"
 export default {
     data(){
         let checkMoney = (rule, value, callback) => {
             //满足的抽奖金额验证
             if (!value) {
-                return callback(new Error('最低抽奖金额不能为空'));
+                return callback(new Error('最低抽奖数量不能为空'));
             }
             let that = this
             setTimeout(() => {
@@ -112,7 +128,7 @@ export default {
                     callback(new Error('请输入数字值'));
                 } else {
                     if (value < 0) {
-                    callback(new Error('金额不能为负数'));
+                    callback(new Error('数量不能为负数'));
                     } else {
                     callback();
                     }
@@ -150,12 +166,16 @@ export default {
             curIndex:0,//当前要修改的奖项的下标值
             sel_options:[],//执行人列表
             istrue:true,//检验开始时间和结束时间不能为空
+            enforcer_id:"",//执行者id
+            editstatus:"",//控制奖品列表是否是编辑状态
+            prizelist_isfull:true,//奖项列表长度大于1个且小于等于6
             ruleForm: {
-                shopname: '',//店铺名
-                phonenumber: '',//商家手机号
-                address:'',//商家地址
-                money:'',//抽奖金额
-                addperson: ''//执行人
+                shopname:"",//店铺名
+                phonenumber:"",//商家手机号
+                address:"",//商家地址
+                tradename:"",//商品名称
+                buynumber:"",//抽奖金额
+                addperson:"",//执行人
                 },
             rules: {
                 shopname: [
@@ -165,7 +185,10 @@ export default {
                 address: [
                     { required: true, message: '请填写商家地址', trigger: 'blur' }
                 ],
-                money: [
+                tradename: [
+                    { required: true, message: '请输入促销商品', trigger: 'blur' }
+                ],
+                buynumber: [
                     {required: true,validator: checkMoney, trigger: 'blur' }
                 ],
                 phonenumber: [
@@ -176,9 +199,17 @@ export default {
     },
     mounted(){
         this.getExecutorList(1,10)
+        this.editstatus = this.$route.query.form
+        if(this.$route.query.form == "update"){
+            this.getPrizeDetail()
+        }
+        this.$toast.setDefaultOptions({
+            color:"red"
+        })
     },
     computed:{
-        ...mapState(["userIdentity","token"]),
+        ...mapState(["userIdentity","token","prizeId","userId"]),
+        //判断添加执行人的按钮保存是否是激活状态
         addactive(){
             if(this.executor !="" && this.phonenumber !=""){
                 return true
@@ -187,15 +218,16 @@ export default {
             }
         },
         timevalidate(){
+            //时间验证
             if(this.mintime !=""&&this.maxtime != ""){
                 return true
             }else{
                 return false
             }
         },
+        //判断一下是否奖项设置是大于两个的
         prizeisnull(){
-            //判断奖项列表是否为空
-            if(this.prizelist.length !=0){
+            if(this.prizelist.length>1){
                 return true
             }else{
                 return false
@@ -207,6 +239,7 @@ export default {
     },
     methods:{
         ...mapMutations(["setaddAlertIsShow","setPrizeList"]),
+        //日期格式化函数
         dateFormat(fmt, date) {
             let ret;
             const opt = {
@@ -226,35 +259,37 @@ export default {
             };
             return fmt;
         },
+        //打开开始时间选择 并且初始化最小时间 
         selStartTime(){
-            //打开开始时间选择 并且初始化最小时间 
             this.start_timeshow = true
             this.minDate = new Date(2020, 0, 1)
         },
+        //取消开始时间选择
         startCancel(){
-            //取消开始时间选择
             this.start_timeshow = false
         },
+         //选择开始时间，返回的时间是中国标准时间 需要格式化
         startConfirm(val){
-            //选择开始时间，返回的时间是中国标准时间 需要格式化
             this.start_timeshow = false
             this.minDate = val
             this.mintime = this.dateFormat("YYYY-mm-dd HH:MM", val)
         },
+        //打开结束时间选择 并且初始化最大时间
         selEndTime(){
-            //每次进行初始化
             this.end_timeshow = true
             this.maxDate = new Date(2030,12,31)
         },
+        //取消结束时间选择
         endCancel(){
             this.end_timeshow = false
         },
+        //选择结束时间 ，返回的时间是中国标准时间 需要格式化
         endConfirm(val){
-            //选择结束时间 ，返回的时间是中国标准时间 需要格式化
             this.end_timeshow = false
             this.maxDate = val
             this.maxtime = this.dateFormat("YYYY-mm-dd HH:MM", val)
         },
+        //获取执行人列表
         getExecutorList(page,pagesize){
             let that = this
             this.request.post(
@@ -265,7 +300,6 @@ export default {
                     pagesize:pagesize
                 }
             ).then(res=>{
-                console.log(res)
                 switch(res.code){
                     case 210:
                         that.sel_options = []
@@ -278,7 +312,13 @@ export default {
                 }
             })
         },
-        addPraise(data){
+        //获取执行人的id
+        getSelvalue(val){
+            this.ruleForm.addperson = val.realname
+            this.enforcer_id = val.enforcer_id
+        },
+        //增加一个新的抽奖
+        addPrize(data){
             let that = this
             this.request.post(
                 "/lottery/prize/add_prize",
@@ -287,25 +327,51 @@ export default {
                     shop_name:data.shopname,
                     phone:data.phonenumber,
                     address:data.address,
-                    money:data.money,
+                    goods_name:data.tradename,
+                    once_num:data.buynumber,
                     start_date:that.mintime,
+                    enforcer_id:that.enforcer_id?that.enforcer_id:that.userId,
                     end_date:that.maxtime,
                     prize_list:that.prizelist
                 }
             ).then(res=>{
-                console.log("添加新的抽奖为：",res)
                 if(res.code == 1){
+                    //保存之后跳转到创建的活动列表中
                     this.$router.push({
-                        path:"/resultDetail"
+                        path:"/activityList"
                     })
                 }
             })
         },
-        selectType(val){
-            this.type = val
-            console.log(this.type)
+        //修改现有的一个抽奖数据
+        updatePrize(data){
+            let that = this
+            this.request.post(
+                "/lottery/prize/update_prize",
+                {
+                    token:that.token,
+                    shop_name:data.shopname,
+                    phone:data.phonenumber,
+                    address:data.address,
+                    goods_name:data.tradename,
+                    enforcer_id:that.userId,
+                    once_num:data.buynumber,
+                    start_date:that.mintime,
+                    enforcer_id:that.enforcer_id,
+                    end_date:that.maxtime,
+                    prize_list:that.prizelist,
+                    prize_id:that.prizeId,
+                }
+            ).then(res=>{
+                if(res.code == 1){
+                    //保存之后跳转到创建的活动列表中
+                    this.$router.push({
+                        path:"/activityList"
+                    })
+                }
+            })
         },
-      
+        //打开增加执行人的弹窗 并且增加一个执行人
         addPerson(){
             //打开增加联系人的弹窗
             this.isshow = true
@@ -313,38 +379,81 @@ export default {
             this.executor = ""
             this.phonenumber = ""
         },
+        //保存要添加的执行人
         sure(){
-            //保存联系人
+            let that= this
             if(this.addactive == true){
-                this.isshow = false
                 this.request.post(
                     "/lottery/prize/add_enforcer",
                     {
                         token:this.token,
                         realname:this.executor,
-                        phone:this.phoneNumber
+                        phone:this.phonenumber
                     }
                 ).then(res=>{
-                    console.log("添加执行人成功",res)
+                    if(res.code == 1){
+                        that.getExecutorList(1,20)
+                        that.isshow = false
+                         that.$toast({
+                            message: res.msg,
+                            position: 'top',
+                            duration:1500
+                        });
+                    }else if(res.code == 0){
+                        that.$toast({
+                            message: res.msg,
+                            position: 'top',
+                        });
+                    }
                 })
             }
         },
+        //从addalert组件中接收修改后的奖项列表
         getPrizeList(val){
-            console.log('父组件这边接收到传值了',val)
             this.prizelist = val
         },
-        startActivity(){
+        //如果是要修改抽奖内容，进去的时候需要先获取抽奖详情
+        getPrizeDetail(){
+            this.request.post(
+                "lottery/prize/prize_detail",
+                {
+                    token:this.token,
+                    prize_id:this.prizeId
+                }
+            ).then(res=>{
+                if(res.code == 1){
+                    this.ruleForm.shopname = res.data.shop_name
+                    this.ruleForm.phonenumber = res.data.phone
+                    this.ruleForm.address = res.data.address
+                    this.ruleForm.tradename = res.data.goods_name
+                    this.ruleForm.addperson = res.data.realname
+                    this.mintime = res.data.start_date
+                    this.maxtime = res.data.end_date
+                    this.ruleForm.buynumber = res.data.once_num
+                }
+            })
+        },
+        //保存抽奖，并进行抽奖表单验证
+        reservePrize(){
             this.$refs.ruleForm.validate((vaild)=>{
                 if(vaild){
+                    //验证一下必填项是否完成
                    if(this.timevalidate == false){
+                       //验证一下活动开始和结束时间是否全部选择
                        this.istrue = false
                    }else{
                        if(this.prizeisnull){
-                           //进行开始抽奖的操作
-                           this.addPraise(this.ruleForm)
+                           //进行开始抽奖的操作，判断一下是否符合抽奖的要求
+                           this.prizelist_isfull = true
+                           if(this.$route.query.form == "update"){
+                               //如果是更新的操作
+                               this.updatePrize(this.ruleForm)
+                           }else{
+                               this.addPrize(this.ruleForm)
+                           }
                        }else{
-                           //这里面抽奖列表为空不能进行
-                           console.log("奖项设置不能为空")
+                           //这里面抽奖列表条数不满足要求
+                          this.prizelist_isfull = false
                        }
                    }
                 }else{
@@ -361,7 +470,8 @@ export default {
             if(newVal == true){
                 this.istrue = true
             }
-        }
+        },
+        
     }
 }
 </script>
@@ -388,7 +498,7 @@ export default {
                     margin-left 0.3rem
                     position relative
                     top -0.2rem
-            &:nth-child(5)
+            &:nth-child(6)
                 .el-form-item__label
                     &::after
                         display none
@@ -421,7 +531,7 @@ export default {
                 .el-form-item__error
                     top 70%
                     left 16px
-            &:nth-child(6)
+            &:nth-child(7)
                 .el-form-item__content
                     padding 0 15px
                     text-align left
@@ -461,6 +571,11 @@ export default {
         text-align left
         color #999999
         font-size 0.69rem
+        .err-msg
+            color #F56C6C
+            font-size 12px
+            padding-left 30px
+            transition all 1s ease
     .set-form
         padding 0 0.64rem
         margin 0 auto

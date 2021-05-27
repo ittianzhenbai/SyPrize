@@ -9,13 +9,13 @@
             </div>
             <div class="btn" v-show="isquxiao == true">
                 <span class="btn1" @click="cancle()">取消</span>
-                <span class="btn2" @click="closeAlert()" >确定</span>
+                <span class="btn2" @click="deterMine()" >确定</span>
             </div>
         </div>
     </div>
 </template>
 <script>
-import { mapState,mapMutations } from "vuex"
+import { mapState} from "vuex"
 export default {
     props:{
         isshow:{
@@ -36,33 +36,29 @@ export default {
     },
     data(){
         return{
-           colse:false 
+           
         }
     },
    
     methods:{
         cancle(){
             this.$emit("changeshow",false)
+            this.$emit("msgstatus","cancle")
         },
-        closeAlert(){
+        deterMine(){
             // console.log(this.msg)
-            if(this.msg == "是否开启本次抽奖？"){
-                this.$router.push({
-                    path:"/erweima",
-                    query:{
-                        prizeid:this.prizeId
-                    }
-                })
-            }
             if(this.msg =="是否结束本次抽奖？"){
                 this.$router.push({
-                    path:"/praiseOver",
+                    path:"/prizeOver",
                      query:{
                         prizeid:this.prizeId
                     }
                 })
             }
-            this.colse = true
+            this.$emit("changeshow",false)
+            this.$emit("msgstatus","determine")
+        },
+        closeAlert(){
             this.$emit("changeshow",false)
         }
     }

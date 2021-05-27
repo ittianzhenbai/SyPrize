@@ -2,7 +2,7 @@
     <div class="login">
         <div class="contain">
             <span class="logo"></span>
-            <span class="text font">业务员站店促销抽奖</span>
+            <span class="text font">石原金牛抽奖</span>
             <div class="login-box">
                 <span class="font text1">手机号</span>
                 <el-input class="input name" v-model="username" placeholder="请输入用户名" clearable/>
@@ -39,22 +39,14 @@ export default {
         ...mapState(["userIdentity"])
     },
     mounted(){
-        // this.isshow = false
-        // console.log(this.axios.defaults.baseURL,process.env.NODE_ENV,process.env)
-        // console.log(this.request)
     },
     methods:{
-        ...mapMutations(["setuserIdentity","setToken","setMobile"]),
-        // gosetting(){
-        //     this.$router.push({
-        //         path:"/activityList"
-        //     })
-        //     this.setuserIdentity("1")
-        // },
+        ...mapMutations(["setuserIdentity","setToken","setMobile","setuserId","setcurname"]),
         changeshow(val){
+            //获取弹窗状态
             this.isshow = val
-            console.log("666",val)
         },
+        //登录
         login(){
             let password = md5(this.password)
             let that = this
@@ -62,14 +54,15 @@ export default {
                 "/lottery/login/login_pass",
                 {
                     mobile:this.username,
-                    password:password
+                    password:password,
+                    business_type:"lottery_h5"
                 }
             ).then(res=>{
-                console.log("登录请求的信息为：",res.data)
-                let user_type = res.data.user_type
-                let mobile = res.data.mobile
-                let token = res.data.token
-                console.log(res.code)
+                let user_type = res.data.user_type//当前用户的类型
+                let mobile = res.data.mobile//当前用户的手机号
+                let token = res.data.token//当前用户登录的token
+                let userid = res.data.userid//用户员的id
+                let realname = res.data.realname
                 if(res.code == 0){
                     that.alertmsg = res.msg
                     that.isshow = true
@@ -77,6 +70,8 @@ export default {
                     that.setuserIdentity(user_type)
                     that.setToken(token)
                     that.setMobile(mobile)
+                    that.setuserId(userid)
+                    that.setcurname(realname)
                     that.$router.push({
                         name:"activityList",
                         params:{

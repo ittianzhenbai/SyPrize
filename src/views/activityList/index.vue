@@ -27,11 +27,15 @@
                     </div>
                     <ul class="act-info font">
                         <li>
-                             <span class="text1">手机</span>号：
+                             <span>手机</span>号：
                              <span class="text2 num">{{item.phone}}</span>
                         </li>
+                         <li>
+                            <span>活动产</span>品：
+                            <p class="text2 p">{{item.goods_name}}</p>
+                        </li>
                         <li>
-                            <span class="text">地</span>址：
+                            <span>地</span>址：
                             <p class="text2 p">{{item.address}}</p>
                         </li>
                         <li>
@@ -55,7 +59,8 @@ export default {
             status:'2',
             praiselist:[],//中奖列表
             page:1,//当前页
-            pagesize:10//每页数据量
+            pagesize:10,//每页数据量
+            prizeid:"",//抽奖的id
         }
     },
     computed:{
@@ -64,7 +69,6 @@ export default {
     created(){
     },
     mounted(){
-        console.log(this.userIdentity,this.mobile)
         this.getPraiseList(this.page,this.pagesize)
     },
     components:{
@@ -74,7 +78,7 @@ export default {
         ...mapMutations(["setprizeId"]),
         addPraise(){
             this.$router.push({
-                path:"/praiseSetting",
+                path:"/prizeSetting",
             })
         },
         getPraiseList(page,pagesize){
@@ -84,18 +88,18 @@ export default {
                 "lottery/prize/get_prize",
                 `token=${this.token}&page=${page}&pagesize=${pagesize}`
             ).then(res=>{
-                console.log("获取到的抽奖列表信息为：",res)
-                console.log(res.code)
+                // console.log("获取到的抽奖列表信息为：",res)
                 switch(res.code){
                     case 0:
-                        console.log("获取数据失败")
+                        //返回的code为0的时候表示获取数据失败
                         that.praiselist = []
                         break;
                     case 1:
-                        console.log("获取数据成功")
+                        //返回的code为1的时候表示请求成功
                         that.praiselist = res.data.list
                         break;
                     case 210:
+                        //210的时候表示暂无数据
                         that.praiselist = []
                         break;
                     default:
@@ -104,24 +108,27 @@ export default {
             })
         },
         goDetail(item){
-            console.log(item)
+            //查看中奖详情页
             this.setprizeId(item.prize_id)
             switch(item.status){
                 case 0:
+                    //抽奖未开始
                     this.$router.push({
                         path:"/resultDetail"
                     })
                     break;
+                case 1:
+                    //抽奖已经开始
+                   this.$router.push({
+                        path:"/erweima",
+                    })
+                    break; 
                 case 2:
+                    //抽奖进行中
                     this.$router.push({
                         path:"/resultDetailing"
                     })
                     break;
-                case 1:
-                   this.$router.push({
-                        path:"/resultDetailing"
-                    })
-                    break; 
             }
         }
     },
